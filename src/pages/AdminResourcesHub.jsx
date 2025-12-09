@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
  LayoutGrid, Users, Search, 
-  ChevronDown, X, CheckCircle, Bell
-} from 'lucide-react';
+  ChevronDown, X, CheckCircle, Bell,Plus, Upload, Trash2, Save} from 'lucide-react';
+import { useApp } from '../context/AppContext';
 import ProfilePage from './ProfilePage'; // Import the new Profile Page
 
 const initialResources = [
@@ -46,7 +46,9 @@ const initialBorrowRecords = [
 ];
 
 const AdminResourceHub = () => {
-  const [resources] = useState(initialResources);
+  const {resources, saveResource, deleteResource } = useApp();
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedFaculty, setSelectedFaculty] = useState("All");
@@ -85,7 +87,14 @@ const AdminResourceHub = () => {
 
   return (
     <div className={`flex h-screen w-full font-sans overflow-hidden transition-colors duration-500 ${theme.container} relative`}>
-<>
+    <>{isEditModalOpen && (
+        <ResourceEditorModal 
+            item={editingItem} 
+            onClose={() => setIsEditModalOpen(false)} 
+            onSave={saveResource}
+            onDelete={deleteResource}
+        />
+    )}
    <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-cyan-400/30 rounded-full blur-[100px] pointer-events-none mix-blend-multiply animate-pulse" />
    <div className="absolute bottom-[-10%] right-[-5%] w-[600px] h-[600px] bg-purple-400/30 rounded-full blur-[120px] pointer-events-none mix-blend-multiply" />
 </>
@@ -124,6 +133,12 @@ const AdminResourceHub = () => {
               </div>
 
               <div className="flex items-center gap-6">
+                <button 
+                  onClick={() => { setEditingItem(null); setIsEditModalOpen(true); }}
+                  className="flex items-center gap-2 bg-slate-800 text-white px-5 py-2.5 rounded-xl hover:bg-slate-900 transition-all shadow-lg"
+                  >
+                  <Plus size={18} /> Add New Item
+                </button>
                 <div 
                   className={`flex items-center gap-3 cursor-pointer group px-4 py-2 rounded-xl transition-all bg-white/40 border border-white/50 hover:bg-white/60 shadow-sm`}
                   onClick={() => setShowAdminPanel(true)}
@@ -185,7 +200,12 @@ const AdminResourceHub = () => {
                         <div className={`overflow-hidden transition-all duration-300 ${expandedCardId === item.id ? 'max-h-40 mt-4 pt-4 border-t border-white/30' : 'max-h-0'}`}>
                             <div className="flex justify-between items-center">
                               <p className={`text-sm ${theme.textSub}`}>{item.description}</p>
-                              <button className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs hover:bg-black transition-colors">Edit Item</button>
+                              <button 
+                                onClick={() => { setEditingItem(item); setIsEditModalOpen(true); }}
+                                className="px-4 py-2 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-bold hover:bg-cyan-200 transition-colors"
+                                >
+                                Edit Item
+                              </button>
                             </div>
                         </div>
                       </div>
@@ -300,6 +320,89 @@ const Dropdown = ({ label, options, value, onChange, theme }) => {
       )}
     </div>
   );
+};
+
+const ResourceEditorModal = ({ item, onClose, onSave, onDelete }) => {
+    const isEdit = !!item;
+    const [formData, setFormData] = useState(item || {
+        title: '', department: 'FOE', type: 'Equipment', quantity: 1, details: '', image: ''
+    });
+
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => setFormData({ ...formData, image: reader.result });
+            reader.readAsDataURL(file);
+        }
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+        onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+                <div className="p-6 border-b flex justify-between items-center bg-slate-50">
+                    <h3 className="text-xl font-bold text-slate-800">{isEdit ? 'Edit Resource' : 'Add New Resource'}</h3>
+                    <button onClick={onClose}><Users className="rotate-45 text-slate-400 hover:text-slate-600" size={24}/></button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-20 h-20 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative group">
+                            {formData.image ? (
+                                <img src={formData.image} className="w-full h-full object-cover" alt="preview"/>
+                            ) : (
+                                <Upload className="text-slate-400 group-hover:text-cyan-500"/>
+                            )}
+                            <input type="file" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Resource Name</label>
+                            <input required className="w-full p-2 border border-slate-200 rounded-lg bg-slate-50 focus:ring-2 ring-cyan-400/30 outline-none" value={formData.title} onChange={e=>setFormData({...formData, title: e.target.value})} />
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase">Faculty</label>
+                            <select className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 ring-cyan-400/30 outline-none" value={formData.department} onChange={e=>setFormData({...formData, department: e.target.value})}>
+                                {['FOE', 'FCI', 'FCM', 'FOM', 'FAC', 'FCA'].map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase">Type</label>
+                            <input className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 ring-cyan-400/30 outline-none" value={formData.type} onChange={e=>setFormData({...formData, type: e.target.value})} />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase">Quantity</label>
+                        <input type="number" min="1" className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 ring-cyan-400/30 outline-none" value={formData.quantity} onChange={e=>setFormData({...formData, quantity: parseInt(e.target.value)})} />
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase">Details / Specs</label>
+                        <textarea className="w-full p-2 border border-slate-200 rounded-lg h-24 focus:ring-2 ring-cyan-400/30 outline-none resize-none" value={formData.details} onChange={e=>setFormData({...formData, details: e.target.value})} />
+                    </div>
+
+                    <div className="pt-4 flex justify-between border-t border-slate-100 mt-4">
+                        {isEdit ? (
+                            <button type="button" onClick={() => { onDelete(item.id); onClose(); }} className="text-red-500 flex items-center gap-2 text-sm hover:bg-red-50 px-3 py-2 rounded-lg transition-colors">
+                                <Trash2 size={16}/> Delete
+                            </button>
+                        ) : <div></div>}
+                        <button type="submit" className="bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-2 rounded-lg font-bold hover:shadow-lg flex items-center gap-2 transition-all">
+                            <Save size={18}/> Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
 };
 
 export default AdminResourceHub;

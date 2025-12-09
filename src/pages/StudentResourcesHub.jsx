@@ -4,40 +4,7 @@ import {
   ChevronDown, X, Clock, AlertCircle
 } from 'lucide-react';
 import ProfilePage from './ProfilePage'; // Import the new Profile Page
-
-const initialResources = [
-  {
-    id: 1, title: "Robotics Lab Kit A", department: "FOE", type: "Kit",
-    subtitle: "Advanced servo motors", details: "Includes Arduino Mega",
-    image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=200"
-  },
-  {
-    id: 2, title: "3D Printer (Prusa MK3)", department: "FCI", type: "Equipment",
-    subtitle: "High precision", details: "Filament provided",
-    image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=200"
-  },
-  {
-    id: 3, title: "VR Headset (Quest 2)", department: "FCM", type: "Device",
-    subtitle: "Standalone VR", details: "Unity ready",
-    image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=200"
-  },
-  {
-    id: 4, title: "Oscilloscope", department: "FOM", type: "Equipment",
-    subtitle: "100MHz 2-Channel", details: "Digital Storage",
-    image: "https://images.unsplash.com/photo-1504384308090-c54be3855833?auto=format&fit=crop&q=80&w=200"
-  },
-  {
-    id: 5, title: "MacBook Pro M2", department: "FAC", type: "Device",
-    subtitle: "Video Editing", details: "Final Cut Pro",
-    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca4?auto=format&fit=crop&q=80&w=200"
-  },
-  {
-    id: 6, title: "Pocket3", department: "FCA", type: "Device",
-    subtitle: "With Clear Image Shown", description: "Standalone VR headset.",
-    image: "https://m.media-amazon.com/images/I/514LEUejXYL.jpg"
-  
-  }
-];
+import { useApp } from '../context/AppContext'; // 🟢 1. 引入 Context
 
 const myHistoryData = [
   {
@@ -56,6 +23,9 @@ const myHistoryData = [
 
 
 const StudentResourceHub = () => {
+  // 🟢 2. 从 Context 获取实时资源数据
+  const { resources } = useApp(); 
+
   const isDarkMode = false; // Always bright mode
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -71,22 +41,21 @@ const StudentResourceHub = () => {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // 🟢 3. 使用 resources (Context数据) 进行筛选，而不是 initialResources
   const filteredResources = useMemo(() => {
-    return initialResources.filter(item => {
+    return resources.filter(item => {
       const matchesSearch = item.title.toLowerCase().includes(debouncedQuery.toLowerCase());
       const matchesFaculty = selectedFaculty === "All" || item.department === selectedFaculty;
       const matchesType = selectedType === "All" || item.type === selectedType;
       return matchesSearch && matchesFaculty && matchesType;
     });
-  }, [debouncedQuery, selectedFaculty, selectedType]);
+  }, [debouncedQuery, selectedFaculty, selectedType, resources]); // 记得依赖项加入 resources
 
-  const departments = ["All", ...new Set(initialResources.map(r => r.department))];
-  const types = ["All", ...new Set(initialResources.map(r => r.type))];
-  const activeLoansCount = myHistoryData.filter(r => r.status === 'Borrowed').length;
+  // 🟢 4. 下拉菜单的选项也基于实时数据生成
+  const departments = ["All", ...new Set(resources.map(r => r.department))];
+  const types = ["All", ...new Set(resources.map(r => r.type))];
 
-  // === 🎨 核心样式定义 (Bright) ===
   const theme = {
-    // 容器背景
     container: "bg-[#F0F4F8] text-slate-600 selection:bg-cyan-200 selection:text-cyan-900",
     
     // 侧边栏玻璃效果
@@ -184,8 +153,8 @@ const StudentResourceHub = () => {
                       />
                     </div>
                     <div className="flex gap-3">
-                      <Dropdown label="Faculty" options={departments} value={selectedFaculty} onChange={setSelectedFaculty} theme={theme} isDarkMode={isDarkMode} />
-                      <Dropdown label="Type" options={types} value={selectedType} onChange={setSelectedType} theme={theme} isDarkMode={isDarkMode} />
+                      <Dropdown label="Faculty" options={departments} value={selectedFaculty} onChange={setSelectedFaculty} theme={theme} />
+                      <Dropdown label="Type" options={types} value={selectedType} onChange={setSelectedType} theme={theme} />
                     </div>
                   </div>
                 </div>
@@ -200,8 +169,8 @@ const StudentResourceHub = () => {
                           className={`group flex flex-col p-4 rounded-2xl transition-all duration-300 cursor-pointer border ${theme.card} ${expandedCardId === item.id ? 'ring-2 ring-cyan-400/30' : ''}`}
                       >
                         <div className="flex items-center gap-5">
-                          <div className={`w-32 h-20 overflow-hidden rounded-xl flex-shrink-0 ${isDarkMode ? 'border-slate-600' : 'border-white/60 shadow-inner'}`}>
-                            <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" /> {/* isDarkMode removed */}
+                          <div className={`w-32 h-20 overflow-hidden rounded-xl flex-shrink-0 border-white/60 shadow-inner`}>
+                            <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                           </div>
 
                           <div className="flex-1">
@@ -211,16 +180,17 @@ const StudentResourceHub = () => {
                                   {item.department}
                                 </span>
                                 <span className={`text-xs ${theme.textSub}`}>{item.type}</span>
+                                <span className={`text-xs ${theme.textSub}`}>Qty: {item.quantity}</span>
                             </div>
                           </div>
                           
                           <ChevronDown size={20} className={`${theme.textSub} transition-transform ${expandedCardId === item.id ? 'rotate-180' : ''}`} />
                         </div>
-                        {/* isDarkMode removed */}
-                        <div className={`grid transition-all duration-300 ease-in-out ${expandedCardId === item.id ? 'grid-rows-[1fr] opacity-100 mt-4 pt-4 border-t ' + (isDarkMode ? 'border-slate-700' : 'border-white/30') : 'grid-rows-[0fr] opacity-0'}`}>
+                        
+                        <div className={`grid transition-all duration-300 ease-in-out ${expandedCardId === item.id ? 'grid-rows-[1fr] opacity-100 mt-4 pt-4 border-t border-white/30' : 'grid-rows-[0fr] opacity-0'}`}>
                             <div className="overflow-hidden">
-                                  <p className={`text-sm mb-4 ${theme.textSub}`}>{item.subtitle} - {item.details}</p>
-                                  <button className={`w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg ${isDarkMode ? 'bg-teal-600 hover:bg-teal-500' : 'bg-gradient-to-r from-cyan-400 to-blue-500 hover:shadow-cyan-500/40 hover:scale-[1.02]'}`}>
+                                  <p className={`text-sm mb-4 ${theme.textSub}`}>{item.details}</p>
+                                  <button className={`w-full py-2.5 rounded-xl text-sm font-bold text-white transition-all shadow-lg bg-gradient-to-r from-cyan-400 to-blue-500 hover:shadow-cyan-500/40 hover:scale-[1.02]`}>
                                     Reserve Resource
                                   </button>
                             </div>
@@ -243,16 +213,16 @@ const StudentResourceHub = () => {
 
 const StudentHistoryPanel = ({ history, onClose, theme, isDarkMode }) => {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200"> {/* isDarkMode removed */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200"> 
       <div className={`w-full max-w-4xl max-h-[85vh] flex flex-col rounded-3xl shadow-2xl overflow-hidden bg-[#F0F4F8]/90 backdrop-blur-xl border border-white/60`}>
         <div className={`flex justify-between items-center p-6 border-b border-white/40`}>
           <h2 className={`text-2xl font-bold ${theme.textMain}`}>History</h2>
-          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full"><X size={24} className={theme.textSub}/></button> {/* isDarkMode removed */}
+          <button onClick={onClose} className="p-2 hover:bg-black/5 rounded-full"><X size={24} className={theme.textSub}/></button> 
         </div>
         <div className="flex-1 overflow-y-auto p-6">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className={`text-sm uppercase tracking-wider ${theme.textSub} border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-200'}`}>
+              <tr className={`text-sm uppercase tracking-wider ${theme.textSub} border-b border-slate-200`}>
                 <th className="pb-4 font-semibold pl-4">Resource</th>
                 <th className="pb-4 font-semibold">Time</th>
                 <th className="pb-4 font-semibold text-center">Status</th>
@@ -261,7 +231,7 @@ const StudentHistoryPanel = ({ history, onClose, theme, isDarkMode }) => {
             <tbody className="text-sm">
               {history.map((record) => {
                 const isOverdue = record.isOverdue;
-                const isReturned = record.status === "Returned"; // isDarkMode removed
+                const isReturned = record.status === "Returned"; 
                 let rowClass = `border-b transition-colors border-slate-200 `;
                 let badgeClass = "";
 
@@ -298,7 +268,7 @@ const StudentHistoryPanel = ({ history, onClose, theme, isDarkMode }) => {
   );
 };
 
-const Dropdown = ({ label, options, value, onChange, theme, isDarkMode }) => {
+const Dropdown = ({ label, options, value, onChange, theme }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
     <div className="relative min-w-[120px]">
@@ -306,7 +276,7 @@ const Dropdown = ({ label, options, value, onChange, theme, isDarkMode }) => {
         <span className="text-sm font-medium">{value === 'All' ? label : value}</span>
         <ChevronDown size={16} />
       </div>
-      {isOpen && ( // isDarkMode removed
+      {isOpen && (
         <div className={`absolute top-full left-0 w-full mt-2 rounded-xl border shadow-xl z-50 overflow-hidden bg-white/90 backdrop-blur-xl border-white/60`}>
           {options.map(opt => (
             <div key={opt} onClick={() => { onChange(opt); setIsOpen(false); }} className={`p-3 text-sm cursor-pointer hover:bg-black/5 ${value === opt ? 'text-cyan-600 font-bold' : theme.textSub}`}>
@@ -319,7 +289,7 @@ const Dropdown = ({ label, options, value, onChange, theme, isDarkMode }) => {
   );
 };
 
-const NavItem = ({ icon, label, active, onClick }) => ( // isDarkMode removed from props
+const NavItem = ({ icon, label, active, onClick }) => (
   <div onClick={onClick} className={`flex items-center gap-3 px-4 py-3 rounded-xl cursor-pointer transition-all duration-300 group ${active ? 'bg-white shadow-lg shadow-cyan-500/10 text-cyan-600' : 'text-slate-500 hover:bg-white/50'}`}>
     {icon}
     <span className={`font-medium hidden md:block`}>{label}</span>
