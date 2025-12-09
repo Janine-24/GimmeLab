@@ -5,7 +5,6 @@ import { useApp } from '../context/AppContext'; // Import Context
 export default function LoginPage() {
   const { login, register } = useApp();
   const navigate = useNavigate();
-  
   const [isLogin, setIsLogin] = useState(true);
   const [role, setRole] = useState('student'); // 'student' or 'admin'
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });

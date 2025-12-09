@@ -1,64 +1,103 @@
-// context/AppContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import * as API from '../services/mockBackend';
+// We will use localStorage directly for simplicity in this version
+// (You can swap this with Firebase later easily)
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   // --- Resources State ---
-  const [resources, setResources] = useState([]);
-  const [triggerSync, setTriggerSync] = useState(0); // Helper to force updates
+  const [resources, setResources] = useState(() => {
+    const saved = localStorage.getItem('gimme_resources');
+    return saved ? JSON.parse(saved) : [
+        { id: 1, title: "Robotics Lab Kit A", department: "FOE", type: "Kit", details: "Includes Arduino Mega", quantity: 5, image: "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=200" },
+        { id: 2, title: "3D Printer (Prusa MK3)", department: "FCI", type: "Equipment", details: "Filament provided", quantity: 2, image: "https://images.unsplash.com/photo-1581094794329-c8112a89af12?auto=format&fit=crop&q=80&w=200" },
+        // ... add other default items if you want
+    ];
+  });
+
+  // --- Reservations State (The New Part) ---
+  const [reservations, setReservations] = useState(() => {
+    const saved = localStorage.getItem('gimme_reservations');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // --- User State ---
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem('gimme_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  // --- Effects to Auto-Save to LocalStorage ---
+  useEffect(() => {
+    localStorage.setItem('gimme_resources', JSON.stringify(resources));
+  }, [resources]);
 
   useEffect(() => {
-    // Load initial data
-    setResources(API.getResourcesAPI());
-  }, [triggerSync]);
+    localStorage.setItem('gimme_reservations', JSON.stringify(reservations));
+  }, [reservations]);
 
-  const handleSaveResource = (resourceData) => {
-    const updatedList = API.saveResourceAPI(resourceData);
-    setResources(updatedList); // Update State -> Triggers Re-render in Student & Admin
+  useEffect(() => {
+    if (user) localStorage.setItem('gimme_user', JSON.stringify(user));
+    else localStorage.removeItem('gimme_user');
+  }, [user]);
+
+  // --- Actions ---
+
+  // 1. Resources
+  const saveResource = (resource) => {
+    if (resource.id) {
+      setResources(resources.map(r => r.id === resource.id ? resource : r));
+    } else {
+      setResources([...resources, { ...resource, id: Date.now() }]);
+    }
   };
 
-  const handleDeleteResource = (id) => {
-    const updatedList = API.deleteResourceAPI(id);
-    setResources(updatedList);
+  const deleteResource = (id) => {
+    setResources(resources.filter(r => r.id !== id));
   };
 
-  // --- Auth State ---
-  const [user, setUser] = useState(API.getCurrentUserAPI());
+  // 2. Reservations (NEW)
+  const addReservation = (bookingData) => {
+    // Booking Data expects: { resourceId, resourceName, date, timeSlot }
+    const newBooking = {
+      id: Date.now(),
+      userId: user.email, // We use email as ID for simplicity
+      userName: user.name,
+      status: "Pending", // Default status
+      timestamp: new Date().toISOString(),
+      ...bookingData
+    };
+    setReservations([...reservations, newBooking]);
+    return newBooking;
+  };
 
-  const login = (email, pass) => {
-    const loggedUser = API.loginAPI(email, pass);
-    setUser(loggedUser);
-    return loggedUser;
+  const updateReservationStatus = (id, newStatus) => {
+    setReservations(reservations.map(r => 
+      r.id === id ? { ...r, status: newStatus } : r
+    ));
+  };
+
+  // 3. Auth
+  const login = (email, password) => {
+    const mockUser = { name: email.split('@')[0], email, role: email.includes("admin") ? "admin" : "student" };
+    setUser(mockUser);
+    return mockUser;
   };
 
   const register = (data) => {
-    const newUser = API.registerAPI(data);
-    setUser(newUser);
-    return newUser;
+    setUser(data);
+    return data;
   };
 
   const logout = () => {
-    API.logoutAPI();
     setUser(null);
   };
-  
-  const updateProfile = (newData) => {
-      const updated = API.updateProfileAPI(newData);
-      setUser(updated);
-  }
 
   return (
     <AppContext.Provider value={{ 
-      resources, 
-      saveResource: handleSaveResource, 
-      deleteResource: handleDeleteResource,
-      user,
-      login,
-      register,
-      logout,
-      updateProfile
+      resources, saveResource, deleteResource,
+      reservations, addReservation, updateReservationStatus,
+      user, login, register, logout
     }}>
       {children}
     </AppContext.Provider>

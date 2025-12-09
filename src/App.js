@@ -1,12 +1,9 @@
 import React from 'react';
 import { AppProvider } from './context/AppContext';
 import { BrowserRouter, Routes, Route,Navigate} from "react-router-dom";
-import LoginPage from "./pages/LoginPage.jsx"; // adjust path if needed
-import StudentHomePage from "./pages/StudentHomePage.jsx";  
+import LoginPage from "./pages/LoginPage.jsx"; // adjust path if needed  
 import StudentResourcesHub from "./pages/StudentResourcesHub.jsx";
-import AdminResourcesHub from './pages/AdminResourcesHub.jsx';
-import AdminHomePage from "./pages/AdminHomePage.jsx";       
-
+import AdminResourcesHub from './pages/AdminResourcesHub.jsx';       
 
 function App() {
   return (
