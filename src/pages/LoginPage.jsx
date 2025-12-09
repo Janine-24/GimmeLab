@@ -25,13 +25,7 @@ export default function LoginPage() {
     localStorage.setItem('activeUser', JSON.stringify(user));
 
     // 2. Navigate to Home Page
-    if (user.role === 'student') {
-      navigate('/studentHome');
-    } else if (user.role === 'admin') {
-      navigate('/adminHome');
-    } else {
-      navigate('/');
-    }
+    navigate('/home');
   });
 
   const handleInputChange = (e) => {
